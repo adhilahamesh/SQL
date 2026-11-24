@@ -1,0 +1,203 @@
+-- Sales dataset for Views, Triggers and Indexes practice
+-- Running this script again resets everything (tables, views, triggers, logs).
+DROP DATABASE IF EXISTS sales_db;
+CREATE DATABASE sales_db;
+USE sales_db;
+
+CREATE TABLE Products (
+    ProductID   INT PRIMARY KEY,
+    ProductName VARCHAR(50),
+    Category    VARCHAR(30),
+    Price       INT
+);
+
+CREATE TABLE Sales (
+    SaleID       INT PRIMARY KEY,
+    SaleDate     DATE,
+    CustomerName VARCHAR(50),
+    City         VARCHAR(30),
+    ProductID    INT,
+    Quantity     INT,
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+);
+
+INSERT INTO Products (ProductID, ProductName, Category, Price) VALUES
+    (1, 'Laptop', 'Electronics', 55000),
+    (2, 'Smartphone', 'Electronics', 18000),
+    (3, 'Tablet', 'Electronics', 22000),
+    (4, 'Headphones', 'Accessories', 1500),
+    (5, 'Keyboard', 'Accessories', 800),
+    (6, 'Mouse', 'Accessories', 500),
+    (7, 'Notebook', 'Stationery', 60),
+    (8, 'Pen Pack', 'Stationery', 120);
+
+INSERT INTO Sales (SaleID, SaleDate, CustomerName, City, ProductID, Quantity) VALUES
+    (1, '2026-10-01', 'Arjun Nair', 'Kochi', 2, 1),
+    (2, '2026-10-01', 'Sneha Menon', 'Thrissur', 4, 2),
+    (3, '2026-10-02', 'Rahul Varma', 'Kozhikode', 1, 1),
+    (4, '2026-10-03', 'Fathima Noor', 'Kannur', 5, 1),
+    (5, '2026-10-04', 'Divya Raj', 'Kochi', 7, 10),
+    (6, '2026-10-05', 'Mohammed Ashraf', 'Kozhikode', 6, 3),
+    (7, '2026-10-07', 'Anjali Krishnan', 'Thrissur', 3, 1),
+    (8, '2026-10-08', 'Suresh Kumar', 'Kochi', 8, 5),
+    (9, '2026-10-10', 'Remya Thomas', 'Kannur', 4, 1),
+    (10, '2026-10-12', 'Nikhil George', 'Kochi', 2, 2),
+    (11, '2026-10-15', 'Aisha Beegum', 'Kozhikode', 7, 20),
+    (12, '2026-10-18', 'Joseph Mathew', 'Thrissur', 5, 2),
+    (13, '2026-10-20', 'Meera Nambiar', 'Kochi', 1, 1),
+    (14, '2026-10-22', 'Hari Krishnan', 'Kannur', 6, 4),
+    (15, '2026-10-25', 'Neha Sharma', 'Kozhikode', 2, 1),
+    (16, '2026-10-28', 'Adil Rahman', 'Kochi', 8, 3),
+    (17, '2026-11-02', 'Priya Das', 'Thrissur', 4, 3),
+    (18, '2026-11-05', 'Kiran Babu', 'Kochi', 3, 1),
+    (19, '2026-11-08', 'Arjun Nair', 'Kochi', 6, 2),
+    (20, '2026-11-10', 'Sneha Menon', 'Thrissur', 2, 1);
+
+SELECT * FROM Products;
+SELECT * FROM Sales;
+
+#1
+CREATE VIEW ELECTRONICS_PRODUCTS AS
+SELECT PRODUCTID, PRODUCTNAME , PRICE 
+FROM PRODUCTS 
+WHERE CATEGORY = "ELECTRONICS";
+
+SELECT * FROM ELECTRONICS_PRODUCTS;
+
+#2
+CREATE VIEW KOCHI_SALES AS 
+SELECT SALEID, CUSTOMERNAME,PRODUCTID,QUANTITY 
+FROM SALES
+WHERE CITY = "KOCHI";
+
+SELECT * FROM KOCHI_SALES;
+
+#3
+CREATE VIEW BULK_SALES AS 
+SELECT SALEID , CUSTOMERNAME , CITY , QUANTITY 
+FROM SALES 
+WHERE QUANTITY > 3;
+
+SELECT * FROM BULK_SALES;
+
+#4
+SELECT * FROM ELECTRONICS_PRODUCTS 
+WHERE PRICE > 20000;
+
+#5
+DROP VIEW BULK_SALES;
+SELECT * FROM BULK_SALES;
+
+#6
+CREATE VIEW SALES_DETAILS AS 
+SELECT S.SALEID , S.CUSTOMERNAME , P.PRODUCTNAME, S.QUANTITY , P.PRICE , S.QUANTITY * P.PRICE AS TOTAL_AMOUNT 
+FROM SALES S
+INNER JOIN PRODUCTS P 
+ON S.PRODUCTID = P.PRODUCTID;
+
+SELECT * FROM SALES_DETAILS;
+
+#7
+SELECT SUM(TOTAL_AMOUNT) AS TOTAL_SALES FROM SALES_DETAILS;  
+
+#8
+CREATE VIEW CATEGORY_SALES AS
+SELECT P.CATEGORY , SUM(S.QUANTITY * P.PRICE) AS TOTAL_AMOUNT 
+FROM SALES S
+INNER JOIN PRODUCTS P 
+ON S.PRODUCTID = P.PRODUCTID  GROUP BY P.CATEGORY;
+
+SELECT * FROM CATEGORY_SALES;
+
+DROP VIEW IF EXISTS CATEGORY_SALES;
+
+#9
+CREATE VIEW CITY_SALES AS
+SELECT CITY , COUNT(SALEID) AS TOTAL_ORDERS , SUM(QUANTITY) AS TOTAL_QUANTITY
+FROM SALES GROUP BY CITY;
+
+SELECT * FROM CITY_SALES;
+
+DROP VIEW IF EXISTS CITY_SALES ;
+
+#10
+DROP TRIGGER IF EXISTS AFTER_INSERT_SALES;
+DROP TABLE IF EXISTS SALES_LOG;
+CREATE TABLE IF NOT EXISTS SALES_LOG (
+    SALEID INT,
+    NAME VARCHAR(50),
+    ACTION VARCHAR(50)
+);
+DELIMITER //
+
+CREATE TRIGGER AFTER_INSERT_SALES
+AFTER INSERT ON SALES
+FOR EACH ROW
+BEGIN
+    INSERT INTO SALES_LOG
+    VALUES (NEW.SALEID, NEW.CUSTOMERNAME, 'SALE ADDED');
+END //
+
+DELIMITER ;
+INSERT INTO SALES
+VALUES (21, '2026-10-14', 'ADHIL', 'TIRUR', 1, 15);
+
+SELECT * FROM SALES_LOG;
+
+#12
+DELIMITER //
+CREATE TRIGGER CHECK_QUANTITY 
+BEFORE INSERT ON SALES
+FOR EACH ROW 
+BEGIN 
+	 IF NEW.QUANTITY < 0 THEN 
+     SET NEW.QUANTITY = 0;
+     END IF;
+END //
+
+DELIMITER ;
+
+INSERT INTO SALES 
+VALUES (22, '2026-11-13', 'Test Customer',  'Kochi',  6 , -5);
+
+SELECT * FROM SALES;
+
+#13
+CREATE TABLE PRICE_LOG (PRODUCTID INT , OLD_PRICE INT , NEW_PRICE INT);
+
+DELIMITER //
+CREATE TRIGGER PRICE_UPDATE_LOG
+AFTER UPDATE ON PRODUCTS
+FOR EACH ROW 
+BEGIN 
+	INSERT INTO PRICE_LOG VALUES (OLD.PRODUCTID , OLD.PRICE , NEW.PRICE);
+END //
+
+DELIMITER ;
+
+UPDATE PRODUCTS
+SET PRICE = 900 
+WHERE PRODUCTID = 5;
+
+SELECT * FROM PRICE_LOG;
+
+#16
+
+CREATE INDEX IDX_CUSTOMER_NAME 
+ON SALES(CUSTOMERNAME);
+
+SELECT * FROM SALES 
+WHERE CUSTOMERNAME = "ADHIL";
+
+#17
+SELECT * FROM SALES 
+WHERE CUSTOMERNAME = "ARJUN NAIR";
+
+#18
+CREATE INDEX IDX_CITY 
+ON SALES(CITY,PRODUCTID);
+
+SELECT * FROM SALES 
+WHERE CITY = "KOCHI" AND PRODUCTID = 2;
+
+
